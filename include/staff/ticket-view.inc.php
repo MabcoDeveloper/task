@@ -15,12 +15,9 @@ if (isset($_POST['qualify'])) {
         $Ex = db_fetch_row($get_ex_Res);
     }
 
-    if ($Ex[0] == null
-    ) {
-        $sqlQ = "INSERT INTO `ost_qualify`( `ticket_id`, `qualify`) VALUES (" . $ticket->getId() . "," . $_POST['qualify'] . ")";
-        // echo $_POST['qualify'];
-        if (db_query($sqlQ)) {
-            echo "<script>
+    $sql_in="INSERT INTO `ost_connect_status`( `ticket_id`, `status_id` , `staff_id `) VALUES (".$ticket->getId().",".$_POST['External_s']." , ".$thisstaff->getId().")";
+    if(db_query($sql_in)){
+        echo "<script>
                                          
                                      if ( window.history.replaceState ) {
                                         window.history.replaceState( null, null, window.location.href );
@@ -28,26 +25,38 @@ if (isset($_POST['qualify'])) {
                                       }
                                       window.location.reload();
                                          </script>";
-        }
-    } else {
-        $sqlQ = "UPDATE `ost_qualify` SET  `qualify`=" . $_POST['qualify'] . " WHERE `ticket_id`=" . $ticket->getId();
-        // echo $_POST['qualify'];
-        if (db_query($sqlQ)) {
-            echo "<script>
-                                         
-                                     if ( window.history.replaceState ) {
-                                        window.history.replaceState( null, null, window.location.href );
-                                        
-                                      }
-                                      window.location.reload();
-                                         </script>";
-        }
     }
     // $test = $_POST['qualify'];
     
 }
 if($_POST){
-    
+    if(isset($_POST['Beenote']))
+    {
+       
+        $Insert="INSERT INTO `ost_thread_entry`(`pid`, `thread_id`, `staff_id`, `user_id`, `type`, `flags`, `poster`, `body`, `format`, `ip_address`,  `created`, `updated`, `recipients`) 
+        SELECT  
+        (SELECT MAX(`ost_thread_entry`.`id`) FROM `ost_thread_entry` INNER JOIN `ost_thread` ON `ost_thread`.`id`=`ost_thread_entry`.`thread_id` WHERE `ost_thread`.`object_id`=".$ticket->getId()." AND `ost_thread`.`object_type`='T' AND `ost_thread_entry`.`type`='M'),
+            
+        (SELECT `id` FROM `ost_thread` WHERE `object_id`= ".$ticket->getId()." AND `object_type` ='T'),
+            
+        (".$thisstaff->getId()."),
+            
+         (SELECT `user_id` FROM `ost_thread_entry` INNER JOIN `ost_thread` ON `ost_thread`.`id`=`ost_thread_entry`.`thread_id` WHERE `ost_thread`.`object_id`=".$ticket->getId()." AND `ost_thread`.`object_type`='T' AND `ost_thread_entry`.`id`=(SELECT MAX(`ost_thread_entry`.`id`) FROM `ost_thread_entry` INNER JOIN `ost_thread` ON `ost_thread`.`id`=`ost_thread_entry`.`thread_id` WHERE `ost_thread`.`object_id`=".$ticket->getId()." AND `ost_thread`.`object_type`='T' AND `type` = 'R')),
+            
+         ('R'),
+         (SELECT `flags` FROM `ost_thread_entry` INNER JOIN `ost_thread` ON `ost_thread`.`id`=`ost_thread_entry`.`thread_id` WHERE `ost_thread`.`object_id`=".$ticket->getId()." AND `ost_thread`.`object_type`='T' AND `ost_thread_entry`.`id`=(SELECT MAX(`ost_thread_entry`.`id`) FROM `ost_thread_entry` INNER JOIN `ost_thread` ON `ost_thread`.`id`=`ost_thread_entry`.`thread_id` WHERE `ost_thread`.`object_id`=".$ticket->getId()." AND `ost_thread`.`object_type`='T' AND `type` = 'R')),
+         
+         (SELECT CONCAT(`ost_staff`.`firstname`, ' ', `ost_staff`.`lastname`) from `ost_staff` WHERE `ost_staff`.`staff_id`=".$thisstaff->getId()."),
+         
+         ('".$_POST["Beenote"]."'),
+         ('html'),
+         ('::1'),
+         (Now()),
+         (Now()),
+         (SELECT `recipients` FROM `ost_thread_entry` WHERE `id` = (SELECT MAX(`ost_thread_entry`.`id`) FROM `ost_thread_entry` INNER JOIN `ost_thread` ON `ost_thread`.`id`=`ost_thread_entry`.`thread_id` WHERE `ost_thread`.`object_id`=".$ticket->getId()." AND `ost_thread`.`object_type`='T' AND `ost_thread_entry`.`type`='M'))";
+         db_query($Insert);
+        
+    }
 if(isset($_POST['External_s'])){
     if($_POST['External_s'] == 4 ){
         $sqlClose="UPDATE `ost_ticket` SET `current_step`= 2  WHERE `ticket_id`=".$ticket->getId();
@@ -101,8 +110,11 @@ if(isset($_POST['External_s'])){
         $St = db_fetch_row($sql_Res);
     }
         
-if($St[0] == null){
-    $sql_in="INSERT INTO `ost_connect_status`( `ticket_id`, `status_id`) VALUES (".$ticket->getId().",".$_POST['External_s'].")";
+    $sqlevent = "INSERT INTO `ost_thread_event` (`id`, `thread_id`, `event_id`, `staff_id`, `team_id`, `dept_id`, `topic_id`, `data`, `username`, `uid`, `uid_type`, `annulled`, `timestamp`) VALUES
+     (NULL, (select max(id) from ost_thread where object_id = ".$ticket->getId()."), (select id from ost_event where description = ".$_POST['External_s']."), ".$thisstaff->getId().", '154', '26', '161', NULL, (select username from ost_staff where staff_id = ".$thisstaff->getId()."), NULL, 'S', '0', Now());";
+    db_query($sqlevent);
+
+    $sql_in="INSERT INTO `ost_connect_status`( `ticket_id`, `status_id` , `staff_id`) VALUES (".$ticket->getId().",".$_POST['External_s']." , ".$thisstaff->getId().")";
     if(db_query($sql_in)){
         echo "<script>
                                          
@@ -113,20 +125,8 @@ if($St[0] == null){
                                       window.location.reload();
                                          </script>";
     }
-}
-else{
-    $sql_in="UPDATE `ost_connect_status` SET `status_id`= ".$_POST['External_s']."  WHERE `ticket_id`= ".$ticket->getId();
-    if(db_query($sql_in)){
-        echo "<script>
-                                         
-                                     if ( window.history.replaceState ) {
-                                        window.history.replaceState( null, null, window.location.href );
-                                        
-                                      }
-                                      window.location.reload();
-                                         </script>";
-    }
-}
+
+
     
 }}
 //Get the goodies.
@@ -832,7 +832,7 @@ echo explode("اسم السائق",explode("رقم الموبايل", $DD[0])[0]
                  $arr_s=array();
                  $sql_get_s="SELECT `ost_external_status`.`status`  FROM `ost_connect_status`
                  INNER JOIN `ost_external_status` ON  `ost_external_status`.`id`=`ost_connect_status`.`status_id`
-                 WHERE `ticket_id`=".$ticket->getId();
+                 WHERE  `ticket_id`=".$ticket->getId()." order by `ost_connect_status`.`id` desc" ;
                  if (($sql_Res = db_query($sql_get_s)) && db_num_rows($sql_Res)) {
                     while (list($ID_) = db_fetch_row($sql_Res)) {
                                     
@@ -1038,7 +1038,80 @@ if ($errors['err'] && isset($_POST['a'])) {
     <div id="msg_warning"><?php echo $warn; ?></div>
 <?php
 } ?>
+  <?php
+        $ID=array();
+$sql_get_hp="SELECT `topic` FROM `ost_help_topic` WHERE `dept_id` = 26";
+if (($sql_Res = db_query($sql_get_hp)) && db_num_rows($sql_Res)) {
+    while (list($ID_) = db_fetch_row($sql_Res)) {
+                    
+        array_push($ID, $ID_);
+    // $ID = db_fetch_row($sql_Res);
+}
+}
+if( trim(explode("/", $ticket->getHelpTopic())[1]," ") == "restaurant activation"){
+$type='R';
+}
+if( trim(explode("/", $ticket->getHelpTopic())[1]," ") == "driver activation"){
+    $type='D';
+    }
+if(in_array(trim(explode("/", $ticket->getHelpTopic())[1]," "),$ID) || in_array(trim(explode("/", $ticket->getHelpTopic())[0]," "),$ID)){
+$S=array();
+$SId=array();
+$sql_get_S="SELECT `id`,`status`  FROM `ost_external_status` WHERE  `user` = 'A' and id <> 4";
+if (($sql_Res = db_query($sql_get_S)) && db_num_rows($sql_Res)) {
+    while (list($ID_,$St) = db_fetch_row($sql_Res)) {
+                    
+        array_push($SId, $ID_);
+        array_push($S, $St);
+    // $ID = db_fetch_row($sql_Res);
+}
+}
+?>
+<div class="sticky bar stop actions">
+       
+        <form style ="padding: 10px 5px;
+  background: #f9f9f9;
+  border: 1px solid #aaa;
+    border-top-color: rgb(170, 170, 170);
+    border-top-style: solid;
+    border-top-width: 1px;" class="tab_content spellcheck exclusive save" action="#" method="post">
+        <label><b><?php echo __('Post Reply');?>:</b></label>
+    <table width="100%">
+<tr width="100%">
+    <td width="120">
+   </td>
+    <td width="80%"> <textarea name="Beenote" id="Beeinternal_note" cols="80"
+    placeholder="<?php echo __('Note details'); ?>"
+    rows="9" wrap="soft"
+    class="<?php if ($cfg->isRichTextEnabled()) echo 'richtext';?> draft draft-delete" ></textarea>
+<br/></td>
+    </tr>
+    <tr>
+    <td width="120">
+    <label><b><?php echo __('External Status');?>:</b></label>
+   
+    <?php csrf_token(); ?></td>
+    <td>
+    <select name="External_s">
+    <option disabled selected value> -- select a status -- </option>  
+    <?php foreach ($S as $index => $item) {
+    ?>
+    <option value="<?php echo $SId[$index]; ?>"><?php echo $item; ?></option>
+    <?php } ?> 
+</select>
 
+</td>
+</table>
+<p style="text-align:center;">
+           <input class="save pending" type="submit" value="<?php echo __('Post Note');?>">
+           <input class="" type="reset" value="<?php echo __('Reset');?>">
+       </p>
+   </form>
+   </div>
+<?php } 
+else 
+{
+?>
 <div class="sticky bar stop actions" id="response_options">
     <ul class="tabs" id="response-tabs">
         <?php
@@ -1492,51 +1565,7 @@ $('#is_done_checkbox').prop('checked', false);
 }
 }
 </script>
-        <?php
-        $ID=array();
-$sql_get_hp="SELECT `topic` FROM `ost_help_topic` WHERE `dept_id` = 26";
-if (($sql_Res = db_query($sql_get_hp)) && db_num_rows($sql_Res)) {
-    while (list($ID_) = db_fetch_row($sql_Res)) {
-                    
-        array_push($ID, $ID_);
-    // $ID = db_fetch_row($sql_Res);
-}
-}
-if( trim(explode("/", $ticket->getHelpTopic())[1]," ") == "restaurant activation"){
-$type='R';
-}
-if( trim(explode("/", $ticket->getHelpTopic())[1]," ") == "driver activation"){
-    $type='D';
-    }
-if(in_array(trim(explode("/", $ticket->getHelpTopic())[1]," "),$ID) || in_array(trim(explode("/", $ticket->getHelpTopic())[0]," "),$ID)){
-$S=array();
-$SId=array();
-$sql_get_S="SELECT `id`,`status`  FROM `ost_external_status` WHERE  `user` = 'A'";
-if (($sql_Res = db_query($sql_get_S)) && db_num_rows($sql_Res)) {
-    while (list($ID_,$St) = db_fetch_row($sql_Res)) {
-                    
-        array_push($SId, $ID_);
-        array_push($S, $St);
-    // $ID = db_fetch_row($sql_Res);
-}
-}
-?>
-        <label><b><?php echo __('External Status');?>:</b></label>
-        <form action="#" method="post">
-<?php csrf_token(); ?>
-        <select name="External_s">
-        <option disabled selected value> -- select a status -- </option>  
-            <?php foreach ($S as $index => $item) {
 
-
-?>
-    <option value="<?php echo $SId[$index]; ?>"><?php echo $item; ?></option>
-<?php } ?> 
-</select>
-<input style=" width: 1em;  height: 1.5em;" type="submit" name="submitExternal" value="Go"/>
-
-        </form>
-<?php } ?>
         <p  style="text-align:center;">
             <input class="save pending" type="submit" value="<?php echo __('Post Reply');?>" name="sub" id="sub">
             <input class="" type="reset" value="<?php echo __('Reset');?>">
@@ -1628,57 +1657,15 @@ if (($sql_Res = db_query($sql_get_S)) && db_num_rows($sql_Res)) {
                 </td>
             </tr>
         </table>
-        <?php
-        $ID=array();
-$sql_get_hp="SELECT `topic` FROM `ost_help_topic` WHERE `dept_id` = 26";
-if (($sql_Res = db_query($sql_get_hp)) && db_num_rows($sql_Res)) {
-    while (list($ID_) = db_fetch_row($sql_Res)) {
-                    
-        array_push($ID, $ID_);
-    // $ID = db_fetch_row($sql_Res);
-}
-}
-if( trim(explode("/", $ticket->getHelpTopic())[1]," ") == "restaurant activation"){
-$type='R';
-}
-if( trim(explode("/", $ticket->getHelpTopic())[1]," ") == "driver activation"){
-    $type='D';
-    }
-if(in_array(trim(explode("/", $ticket->getHelpTopic())[1]," "),$ID) || in_array(trim(explode("/", $ticket->getHelpTopic())[0]," "),$ID)){
-$S=array();
-$SId=array();
-$sql_get_S="SELECT `id`,`status`  FROM `ost_external_status` WHERE  `user` = 'A' and id <> 4";
-if (($sql_Res = db_query($sql_get_S)) && db_num_rows($sql_Res)) {
-    while (list($ID_,$St) = db_fetch_row($sql_Res)) {
-                    
-        array_push($SId, $ID_);
-        array_push($S, $St);
-    // $ID = db_fetch_row($sql_Res);
-}
-}
-?>
-        <label><b><?php echo __('External Status');?>:</b></label>
-        <form action="#" method="post">
-<?php csrf_token(); ?>
-        <select name="External_s">
-        <option disabled selected value> -- select a status -- </option>  
-            <?php foreach ($S as $index => $item) {
-
-
-?>
-    <option value="<?php echo $SId[$index]; ?>"><?php echo $item; ?></option>
-<?php } ?> 
-</select>
-<input style=" width: 1em;  height: 1.5em;" type="submit" name="submitExternal" value="Go"/>
-
-</form>
-<?php } ?>
+      
        <p style="text-align:center;">
            <input class="save pending" type="submit" value="<?php echo __('Post Note');?>">
            <input class="" type="reset" value="<?php echo __('Reset');?>">
        </p>
    </form>
  </div>
+ <?php
+ }?>
  </div>
 </div>
 <div style="display:none;" class="dialog" id="print-options">

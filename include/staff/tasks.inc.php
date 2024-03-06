@@ -1143,8 +1143,83 @@ if ($_REQUEST['order'] && isset($orderWays[strtoupper($_REQUEST['order'])])) {
 }?>
         <div class="clear"></div>
         <div style="margin-bottom:20px; padding-top:5px;">
+    
             <div class="sticky bar opaque">
                 <div class="content">
+                <?php
+  $GetTeamNameQ = "SELECT DISTINCT  `dept_id` FROM `ost_staff` WHERE `staff_id` = " . $thisstaff->getId();
+
+  if (($GetTeamName_Res = db_query($GetTeamNameQ)) && db_num_rows($GetTeamName_Res)) {
+      $dept= db_fetch_row($GetTeamName_Res)[0];
+  }
+
+  if( $dept =="4"){
+    
+    ?>
+        <div class="clear"></div>
+        <form id="task_form" name="task_form" action="tasks.php" method="post" style="display: flex;justify-content: center;">
+        <?php csrf_token(); ?>
+           <?php
+           
+        if (!empty($_POST['txt_task'])) {
+            $txt_task = $_POST['txt_task'];
+            $Dept = $thisstaff->getDeptId();
+            $staff_id = $thisstaff->getId();
+            $servername = "poss.mabcoonline.com";
+            $username = "mabco";
+            $password = "123456";
+            $dbname = "mabco3_ost";
+            $conn = mysqli_connect($servername, $username, $password, $dbname) ;
+            $con=new PDO("mysql:host=$servername;dbname=$dbname",$username,$password);
+            $con->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+            $NewEventQuery = "
+                SET @TaskSequenceId = (SELECT `value` FROM `ost_config` WHERE `key` = 'task_sequence_id');
+                SET @NewTaskTitle = '$txt_task';
+                SET @LastThreadID = (SELECT LAST_INSERT_ID());
+                
+                SET @AssignorName = (SELECT CONCAT(`firstname`, ' ', `lastname`) FROM `ost_staff` WHERE `staff_id` =  $staff_id );
+                SET @StaffName =    (SELECT CONCAT(`firstname`, ' ', `lastname`) FROM `ost_staff` WHERE `staff_id` = $staff_id );
+                SET @NewSequenceNum = (SELECT `next` FROM `ost_sequence` WHERE `id` = @TaskSequenceId);
+                INSERT INTO `ost_task` (`number`       , `dept_id`    , `staff_id`, `assignor_id`, `is_private`, `team_id`, `flags`, `duedate`, `created`, `updated` ,`CBC`,`closed`) VALUES 
+                (@NewSequenceNum,  $Dept , $staff_id ,  $staff_id , 1, 0, 2, DATE_ADD(NOW(), INTERVAL 2 MINUTE) , NOW(), NOW(),0, NOW());
+                SET @NewTaskID = (SELECT LAST_INSERT_ID());
+                INSERT INTO `ost_task__cdata` (`task_id` , `title`) VALUES 
+                    (@NewTaskID, @NewTaskTitle);
+                INSERT INTO `ost_thread` (`object_id`, `object_type`, `created`) VALUES 
+                    (@NewTaskID , 'A'          , NOW());
+                SET @LastThreadID = (SELECT LAST_INSERT_ID());
+
+                SET @LastThreadID = (SELECT LAST_INSERT_ID());
+                INSERT INTO `ost_thread_entry` (`id`, `pid`, `thread_id`  , `staff_id`     , `user_id`, `type`, `flags`, `poster`       , `editor`, `editor_type`, `source`, `title`, `body`            , `format`, `ip_address`, `recipients`  , `created`, `updated`) VALUES 
+                    (NULL, '0'  , @LastThreadID, $staff_id , '0'      , 'M'   , '64'   , @AssignorName  , NULL    , NULL         , ''      , NULL   , '$txt_task', 'html'  , '::1'       , NULL          , NOW()    , NOW());
+                SET @LastThreadEntryId = (SELECT LAST_INSERT_ID());
+                INSERT INTO `ost_thread_event` (`id`, `thread_id`  , `event_id`  , `staff_id`, `team_id`, `dept_id`  , `topic_id`, `data`, `username`, `uid`          , `uid_type`, `annulled`, `timestamp`) VALUES 
+                    (NULL, @LastThreadID, '1'         , '0'       , '0'      ,   $Dept, '0'       , NULL  , @AssignorName  ,  $staff_id , 'S'       , '0'       , NOW()); 
+                
+                INSERT INTO `ost_thread_event` (`id`, `thread_id`  , `event_id`, `staff_id`     , `team_id`, `dept_id`  , `topic_id`, `data`                                                                                                                                        , `username`, `uid`          , `uid_type`  , `annulled`, `timestamp`) VALUES 
+                    (NULL, @LastThreadID, '4'       ,  $staff_id , '0'      ,   $Dept, '0'       , CONCAT('{\"staff\":[',$staff_id , ',{\"format\":\"full\",\"parts\":{\"first\":\"SYSTEM\",\"last\":\"SYSTEM\"},\"name\":\"SYSTEM SYSTEM\"}]}'), 'SYSTEM'  , $staff_id , 'S'         , '0'       , NOW());
+                INSERT INTO `ost_thread_event` (`id`, `thread_id`  , `event_id`, `staff_id`     , `team_id`, `dept_id`  , `topic_id`, `data`                                                                                                                                        , `username`, `uid`          , `uid_type`  , `annulled`, `timestamp`) VALUES 
+                    (NULL, @LastThreadID, '2'       ,  $staff_id , '0'      ,   $Dept, '0'       , Null , @AssignorName , $staff_id , 'S'         , '0'       , NOW());
+                INSERT INTO `ost_form_entry` (`id`, `form_id`, `object_id`, `object_type`, `sort`, `extra`, `created`, `updated`) VALUES 
+                    (NULL, '5'      , @NewTaskID , 'A'          , '1'   , NULL   , NOW()    , NOW());
+                SET @LastFormEntryId = (SELECT LAST_INSERT_ID());
+                INSERT INTO `ost_form_entry_values` (`entry_id`      , `field_id`, `value`      , `value_id`) VALUES 
+                    (@LastFormEntryId, '32'      , @NewTaskTitle, NULL);
+                INSERT INTO `ost__search` (`object_type`, `object_id`       , `title`, `content`) VALUES 
+                                   ('H'          , @LastThreadEntryId, ''     , @NewTaskTitle);
+                UPDATE `ost_sequence` SET `next` = `next` + 1 WHERE `id` = @TaskSequenceId;";
+
+                mysqli_multi_query($conn,$NewEventQuery);
+               // db_query($NewEventQuery);
+            error_log("Query: " . $NewEventQuery);
+            
+        }?>
+            <input type="text" id="txt_task" name="txt_task" style="width: 50%;"/>
+            <input type="submit" value="Create Task" name="str1" id="submitbtn">
+        </form>
+        <?php 
+        }
+        ?>
                     <div style="display:flex; flex-direction: row; justify-content: center; align-items: center"  class="pull-left flush-left">
                         <h2><a href="<?php echo $refresh_url; ?>" title="<?php echo __('Refresh'); ?>"><i class="icon-refresh"></i> <?php echo  $results_type . $showing; ?></a></h2>
                     
@@ -1234,6 +1309,7 @@ if ($_REQUEST['order'] && isset($orderWays[strtoupper($_REQUEST['order'])])) {
     
     ?>                        <h2 style="margin-left: 100px;"><a href="tasks.php?status=closedweek" title="<?php echo __('Refresh'); ?>"><i class="icon-refresh"></i> <?php echo  "This Week"; ?></a></h2>
     <?php }?>
+  
     <!-- Month -->
 
     <!-- From -->
@@ -2812,9 +2888,9 @@ if ($_REQUEST['order'] && isset($orderWays[strtoupper($_REQUEST['order'])])) {
                         
                         echo '<div style="position:  position: relative;top: 250px;">&nbsp;' . __('Page') . ':' . $pageNav->getPageLinks() . '&nbsp;';
                     }
-                    else{
-                        echo '<div style="position: absolute;top: 230px;">&nbsp;' . __('Page') . ':' . $pageNav->getPageLinks() . '&nbsp;';
-                    }
+                    // else{
+                    //     echo '<div style="position: absolute;top: 230px;">&nbsp;' . __('Page') . ':' . $pageNav->getPageLinks() . '&nbsp;';
+                    // }
                    
                     echo sprintf(
                         '<a class="export-csv no-pjax" href="?%s">%s</a>',
